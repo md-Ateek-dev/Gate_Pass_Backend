@@ -1,5 +1,4 @@
 import GatePass from '../models/GatePass.js';
-import QRCode from 'qrcode';
 
 const generateGatePassNumber = async () => {
   const currentYear = new Date().getFullYear();
@@ -33,14 +32,6 @@ export const createGatePass = async (req, res) => {
     const visitorPhoto = req.file ? req.file.path : null;
     const gatePassNumber = await generateGatePassNumber();
 
-    const qrData = JSON.stringify({
-      gatePassNumber,
-      visitorName,
-      mobileNumber,
-      companyName,
-    });
-    const qrCode = await QRCode.toDataURL(qrData);
-
     const gatePass = new GatePass({
       user: req.user._id,
       gatePassNumber,
@@ -61,7 +52,6 @@ export const createGatePass = async (req, res) => {
       make,
       visitType,
       visitorPhoto,
-      qrCode,
     });
 
     const createdPass = await gatePass.save();
@@ -73,7 +63,7 @@ export const createGatePass = async (req, res) => {
 
 export const getMyGatePasses = async (req, res) => {
   try {
-    const passes = await GatePass.find({ user: req.user._id }).sort({ createdAt: -1 });
+    const passes = await GatePass.find({ user: req.user._id }).populate('user', 'name email').sort({ createdAt: -1 });
     res.json(passes);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

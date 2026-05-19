@@ -88,9 +88,6 @@ const gatePassSchema = new mongoose.Schema(
       enum: ['Pending', 'Approved', 'Rejected', 'Checked Out'],
       default: 'Pending',
     },
-    qrCode: {
-      type: String,
-    },
   },
   { timestamps: true }
 );

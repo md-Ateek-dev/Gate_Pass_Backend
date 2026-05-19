@@ -1,4 +1,5 @@
 import GatePass from '../models/GatePass.js';
+import User from '../models/User.js';
 import ExcelJS from 'exceljs';
 
 export const getAllGatePasses = async (req, res) => {
@@ -80,11 +81,24 @@ export const exportToExcel = async (req, res) => {
       { header: 'GP Number', key: 'gatePassNumber', width: 15 },
       { header: 'Date', key: 'date', width: 20 },
       { header: 'Unit', key: 'unit', width: 15 },
+      { header: 'Visit Type', key: 'visitType', width: 15 },
       { header: 'Visitor Name', key: 'visitorName', width: 20 },
       { header: 'Mobile', key: 'mobileNumber', width: 15 },
+      { header: 'ID Proof Type', key: 'idProofType', width: 15 },
+      { header: 'ID Number', key: 'idNumber', width: 20 },
+      { header: 'Persons', key: 'numberOfPersons', width: 10 },
       { header: 'Company', key: 'companyName', width: 20 },
       { header: 'Purpose', key: 'purpose', width: 20 },
+      { header: 'Person to Meet', key: 'personToMeet', width: 20 },
+      { header: 'Department', key: 'department', width: 15 },
+      { header: 'Vehicle Number', key: 'vehicleNumber', width: 15 },
+      { header: 'Items Carrying', key: 'itemsCarrying', width: 20 },
+      { header: 'Serial Number', key: 'serialNumber', width: 15 },
+      { header: 'Make', key: 'make', width: 15 },
       { header: 'Status', key: 'status', width: 15 },
+      { header: 'Requestor Name', key: 'requestor', width: 20 },
+      { header: 'Out Time', key: 'outTime', width: 20 },
+      { header: 'Created At', key: 'createdAt', width: 20 },
     ];
 
     passes.forEach((pass) => {
@@ -92,11 +106,24 @@ export const exportToExcel = async (req, res) => {
         gatePassNumber: pass.gatePassNumber,
         date: new Date(pass.date).toLocaleString(),
         unit: pass.unit,
+        visitType: pass.visitType,
         visitorName: pass.visitorName,
         mobileNumber: pass.mobileNumber,
+        idProofType: pass.idProofType,
+        idNumber: pass.idNumber,
+        numberOfPersons: pass.numberOfPersons,
         companyName: pass.companyName,
         purpose: pass.purpose,
+        personToMeet: pass.personToMeet,
+        department: pass.department,
+        vehicleNumber: pass.vehicleNumber || 'N/A',
+        itemsCarrying: pass.itemsCarrying || 'N/A',
+        serialNumber: pass.serialNumber || 'N/A',
+        make: pass.make || 'N/A',
         status: pass.status,
+        requestor: pass.user ? pass.user.name : 'Unknown',
+        outTime: pass.outTime ? new Date(pass.outTime).toLocaleString() : 'N/A',
+        createdAt: new Date(pass.createdAt).toLocaleString(),
       });
     });
 
@@ -111,6 +138,38 @@ export const exportToExcel = async (req, res) => {
 
     await workbook.xlsx.write(res);
     res.status(200).end();
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const createUser = async (req, res) => {
+  const { name, email, password, role } = req.body;
+
+  try {
+    const userExists = await User.findOne({ email });
+
+    if (userExists) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role: role || 'user',
+    });
+
+    if (user) {
+      res.status(201).json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      });
+    } else {
+      res.status(400).json({ message: 'Invalid user data' });
+    }
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

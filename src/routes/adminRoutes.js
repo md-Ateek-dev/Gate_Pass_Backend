@@ -5,6 +5,7 @@ import {
   deleteGatePass,
   getDashboardStats,
   exportToExcel,
+  createUser,
 } from '../controllers/adminController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -12,6 +13,7 @@ const router = express.Router();
 
 router.get('/stats', protect, admin, getDashboardStats);
 router.get('/export', protect, admin, exportToExcel);
+router.post('/users', protect, admin, createUser);
 
 router.route('/')
   .get(protect, admin, getAllGatePasses);
