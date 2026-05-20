@@ -2,10 +2,21 @@ import GatePass from '../models/GatePass.js';
 
 const generateGatePassNumber = async () => {
   const currentYear = new Date().getFullYear();
-  const count = await GatePass.countDocuments({
-    gatePassNumber: { $regex: `^GP-${currentYear}` },
-  });
-  return `GP-${currentYear}-${String(count + 1).padStart(4, '0')}`;
+  // Find the gate pass with the highest sequence number for this year
+  const lastPass = await GatePass.findOne({
+    gatePassNumber: { $regex: `^GP-${currentYear}-` },
+  }).sort({ gatePassNumber: -1 });
+
+  let nextSequenceNum = 1;
+  if (lastPass) {
+    const parts = lastPass.gatePassNumber.split('-');
+    const lastSeq = parseInt(parts[2], 10);
+    if (!isNaN(lastSeq)) {
+      nextSequenceNum = lastSeq + 1;
+    }
+  }
+
+  return `GP-${currentYear}-${String(nextSequenceNum).padStart(4, '0')}`;
 };
 
 export const createGatePass = async (req, res) => {

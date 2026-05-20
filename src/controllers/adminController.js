@@ -174,3 +174,35 @@ export const createUser = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({}).select('-password').sort({ createdAt: -1 });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.email === 'admin@gatepass.com') {
+      return res.status(400).json({ message: 'Cannot delete the default admin user' });
+    }
+
+    if (user._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({ message: 'Cannot delete yourself' });
+    }
+
+    await user.deleteOne();
+    res.json({ message: 'User removed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};

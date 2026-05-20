@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 
 import connectDB from './config/db.js';
+import { startCleanupJob } from './config/cleanup.js';
 import authRoutes from './routes/authRoutes.js';
 import gatePassRoutes from './routes/gatePassRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -14,6 +15,7 @@ import adminRoutes from './routes/adminRoutes.js';
 dotenv.config();
 
 connectDB();
+startCleanupJob();
 
 const app = express();
 
