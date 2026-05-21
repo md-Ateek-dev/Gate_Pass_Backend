@@ -54,16 +54,16 @@ export const getDashboardStats = async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const todayVisitors = await GatePass.countDocuments({ date: { $gte: today } });
     
+    const insideVisitors = await GatePass.countDocuments({ status: 'Checked In' });
+    const completedVisits = await GatePass.countDocuments({ status: 'Checked Out' });
     const pendingRequests = await GatePass.countDocuments({ status: 'Pending' });
-    const approvedPasses = await GatePass.countDocuments({ status: 'Approved' });
-    const rejectedPasses = await GatePass.countDocuments({ status: 'Rejected' });
 
     res.json({
       totalVisitors,
       todayVisitors,
+      insideVisitors,
+      completedVisits,
       pendingRequests,
-      approvedPasses,
-      rejectedPasses,
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

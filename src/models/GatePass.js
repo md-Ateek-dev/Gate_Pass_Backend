@@ -79,14 +79,17 @@ const gatePassSchema = new mongoose.Schema(
     visitorPhoto: {
       type: String,
     },
+    checkInTime: {
+      type: Date,
+    },
     outTime: {
       type: Date,
     },
     status: {
       type: String,
       required: true,
-      enum: ['Pending', 'Approved', 'Rejected', 'Checked Out'],
-      default: 'Pending',
+      enum: ['Pending', 'Approved', 'Rejected', 'Checked In', 'Checked Out'],
+      default: 'Approved',
     },
   },
   { timestamps: true }

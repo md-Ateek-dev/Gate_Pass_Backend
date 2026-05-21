@@ -40,7 +40,7 @@ export const createGatePass = async (req, res) => {
       visitType,
     } = req.body;
 
-    const visitorPhoto = req.file ? req.file.path : null;
+    const visitorPhoto = req.file ? '/' + req.file.path.replace(/\\/g, '/') : null;
     const gatePassNumber = await generateGatePassNumber();
 
     const gatePass = new GatePass({
@@ -63,11 +63,13 @@ export const createGatePass = async (req, res) => {
       make,
       visitType,
       visitorPhoto,
+      status: 'Approved',
     });
 
     const createdPass = await gatePass.save();
     res.status(201).json(createdPass);
   } catch (error) {
+    console.error('Error in createGatePass:', error);
     res.status(500).json({ message: error.message || 'Server Error' });
   }
 };
@@ -107,13 +109,13 @@ export const updateGatePass = async (req, res) => {
         return res.status(401).json({ message: 'Not authorized' });
       }
 
-      if (pass.status !== 'Pending') {
-        return res.status(400).json({ message: 'Can only edit pending passes' });
+      if (pass.status === 'Checked In' || pass.status === 'Checked Out') {
+        return res.status(400).json({ message: 'Cannot edit checked-in/out passes' });
       }
 
       Object.assign(pass, req.body);
       if (req.file) {
-        pass.visitorPhoto = req.file.path;
+        pass.visitorPhoto = '/' + req.file.path.replace(/\\/g, '/');
       }
 
       const updatedPass = await pass.save();
@@ -121,6 +123,45 @@ export const updateGatePass = async (req, res) => {
     } else {
       res.status(404).json({ message: 'Gate pass not found' });
     }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getGatePassForScan = async (req, res) => {
+  try {
+    const pass = await GatePass.findById(req.params.id).populate('user', 'name email');
+    if (pass) {
+      res.json(pass);
+    } else {
+      res.status(404).json({ message: 'Gate pass not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const updateGatePassScanStatus = async (req, res) => {
+  try {
+    const { action } = req.body;
+    const pass = await GatePass.findById(req.params.id);
+
+    if (!pass) {
+      return res.status(404).json({ message: 'Gate pass not found' });
+    }
+
+    if (action === 'check-in') {
+      pass.status = 'Checked In';
+      pass.checkInTime = new Date();
+    } else if (action === 'check-out') {
+      pass.status = 'Checked Out';
+      pass.outTime = new Date();
+    } else {
+      return res.status(400).json({ message: 'Invalid scan action' });
+    }
+
+    const updatedPass = await pass.save();
+    res.json(updatedPass);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

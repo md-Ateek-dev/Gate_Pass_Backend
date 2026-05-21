@@ -3,14 +3,14 @@ import GatePass from '../models/GatePass.js';
 export const startCleanupJob = () => {
   const autoDeleteOldPasses = async () => {
     try {
-      const oneMonthAgo = new Date();
-      oneMonthAgo.setDate(oneMonthAgo.getDate() - 30); // 30 days ago
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - 360); // 360 days ago
 
       const result = await GatePass.deleteMany({
-        createdAt: { $lt: oneMonthAgo }
+        createdAt: { $lt: cutoffDate }
       });
 
-      console.log(`[Auto-Cleanup] Automatically deleted ${result.deletedCount} gate passes older than 30 days (1 month).`);
+      console.log(`[Auto-Cleanup] Automatically deleted ${result.deletedCount} gate passes older than 360 days.`);
     } catch (error) {
       console.error('[Auto-Cleanup] Error running auto-cleanup for gate passes:', error);
     }
