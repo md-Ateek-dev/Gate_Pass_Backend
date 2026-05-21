@@ -40,7 +40,7 @@ export const createGatePass = async (req, res) => {
       visitType,
     } = req.body;
 
-    const visitorPhoto = req.file ? '/' + req.file.path.replace(/\\/g, '/') : null;
+    const visitorPhoto = req.file?.path || null;
     const gatePassNumber = await generateGatePassNumber();
 
     const gatePass = new GatePass({
@@ -115,7 +115,7 @@ export const updateGatePass = async (req, res) => {
 
       Object.assign(pass, req.body);
       if (req.file) {
-        pass.visitorPhoto = '/' + req.file.path.replace(/\\/g, '/');
+        pass.visitorPhoto = req.file.path;
       }
 
       const updatedPass = await pass.save();
