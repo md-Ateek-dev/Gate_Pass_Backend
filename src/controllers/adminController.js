@@ -46,17 +46,17 @@ export const deleteGatePass = async (req, res) => {
   }
 };
 
-export const bulkDeleteGatePasses = async (req, res) => {
+export const deleteGatePassesBulk = async (req, res) => {
   try {
     const { ids } = req.body;
 
     if (!Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ message: 'No gate passes selected' });
+      return res.status(400).json({ message: 'Select at least one gate pass to delete' });
     }
 
     const result = await GatePass.deleteMany({ _id: { $in: ids } });
     res.json({
-      message: `${result.deletedCount} gate pass(es) removed`,
+      message: `${result.deletedCount} gate pass(es) deleted`,
       deletedCount: result.deletedCount,
     });
   } catch (error) {
