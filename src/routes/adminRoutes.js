@@ -3,6 +3,7 @@ import {
   getAllGatePasses,
   updateGatePassStatus,
   deleteGatePass,
+  bulkDeleteGatePasses,
   getDashboardStats,
   exportToExcel,
   createUser,
@@ -25,6 +26,8 @@ router.route('/users/:id')
 
 router.route('/')
   .get(protect, admin, getAllGatePasses);
+
+router.post('/bulk-delete', protect, admin, bulkDeleteGatePasses);
 
 router.route('/:id')
   .put(protect, admin, updateGatePassStatus)

@@ -46,6 +46,24 @@ export const deleteGatePass = async (req, res) => {
   }
 };
 
+export const bulkDeleteGatePasses = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No gate passes selected' });
+    }
+
+    const result = await GatePass.deleteMany({ _id: { $in: ids } });
+    res.json({
+      message: `${result.deletedCount} gate pass(es) removed`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 export const getDashboardStats = async (req, res) => {
   try {
     const totalVisitors = await GatePass.countDocuments();
@@ -96,12 +114,18 @@ export const exportToExcel = async (req, res) => {
       { header: 'Serial Number', key: 'serialNumber', width: 15 },
       { header: 'Make', key: 'make', width: 15 },
       { header: 'Status', key: 'status', width: 15 },
-      { header: 'Requestor Name', key: 'requestor', width: 20 },
+      { header: 'In Status', key: 'inStatus', width: 18 },
+      { header: 'In Time', key: 'checkInTime', width: 20 },
+      { header: 'Out Status', key: 'outStatus', width: 18 },
       { header: 'Out Time', key: 'outTime', width: 20 },
+      { header: 'Requestor Name', key: 'requestor', width: 20 },
       { header: 'Created At', key: 'createdAt', width: 20 },
     ];
 
     passes.forEach((pass) => {
+      const hasIn = Boolean(pass.checkInTime);
+      const hasOut = Boolean(pass.outTime);
+
       worksheet.addRow({
         gatePassNumber: pass.gatePassNumber,
         date: new Date(pass.date).toLocaleString(),
@@ -121,8 +145,11 @@ export const exportToExcel = async (req, res) => {
         serialNumber: pass.serialNumber || 'N/A',
         make: pass.make || 'N/A',
         status: pass.status,
+        inStatus: hasIn ? 'Checked In' : 'Not Checked In',
+        checkInTime: hasIn ? new Date(pass.checkInTime).toLocaleString() : 'N/A',
+        outStatus: hasOut ? 'Checked Out' : hasIn ? 'Inside (Not Out Yet)' : 'Not Checked Out',
+        outTime: hasOut ? new Date(pass.outTime).toLocaleString() : 'N/A',
         requestor: pass.user ? pass.user.name : 'Unknown',
-        outTime: pass.outTime ? new Date(pass.outTime).toLocaleString() : 'N/A',
         createdAt: new Date(pass.createdAt).toLocaleString(),
       });
     });
