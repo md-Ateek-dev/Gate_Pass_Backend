@@ -95,5 +95,11 @@ const gatePassSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+gatePassSchema.index({ user: 1, createdAt: -1 });
+gatePassSchema.index({ status: 1 });
+gatePassSchema.index({ date: -1 });
+gatePassSchema.index({ createdAt: -1 });
+gatePassSchema.index({ gatePassNumber: 1 });
+
 const GatePass = mongoose.model('GatePass', gatePassSchema);
 export default GatePass;

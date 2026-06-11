@@ -1,4 +1,8 @@
+import mongoose from 'mongoose';
 import GatePass from '../models/GatePass.js';
+import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+
+const LIST_FIELDS = 'gatePassNumber date visitorName companyName status createdAt';
 
 const generateGatePassNumber = async () => {
   const currentYear = new Date().getFullYear();
@@ -74,10 +78,50 @@ export const createGatePass = async (req, res) => {
   }
 };
 
+export const getMyGatePassStats = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+    const [result] = await GatePass.aggregate([
+      { $match: { user: userId } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          checkedIn: { $sum: { $cond: [{ $eq: ['$status', 'Checked In'] }, 1, 0] } },
+          checkedOut: { $sum: { $cond: [{ $eq: ['$status', 'Checked Out'] }, 1, 0] } },
+        },
+      },
+    ]);
+
+    res.json({
+      total: result?.total || 0,
+      checkedIn: result?.checkedIn || 0,
+      checkedOut: result?.checkedOut || 0,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 export const getMyGatePasses = async (req, res) => {
   try {
-    const passes = await GatePass.find({ user: req.user._id }).populate('user', 'name email').sort({ createdAt: -1 });
-    res.json(passes);
+    const { page, limit, skip } = parsePagination(req.query);
+    const filter = { user: req.user._id };
+
+    const [passes, total] = await Promise.all([
+      GatePass.find(filter)
+        .select(LIST_FIELDS)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      GatePass.countDocuments(filter),
+    ]);
+
+    res.json({
+      passes,
+      pagination: buildPaginationMeta(total, page, limit),
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

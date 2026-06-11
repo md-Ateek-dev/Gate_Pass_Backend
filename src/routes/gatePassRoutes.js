@@ -2,6 +2,7 @@ import express from 'express';
 import {
   createGatePass,
   getMyGatePasses,
+  getMyGatePassStats,
   getGatePassById,
   updateGatePass,
   getGatePassForScan,
@@ -15,6 +16,8 @@ const router = express.Router();
 router.route('/')
   .post(protect, upload.single('visitorPhoto'), createGatePass)
   .get(protect, getMyGatePasses);
+
+router.get('/stats', protect, getMyGatePassStats);
 
 router.route('/scan/:id')
   .get(getGatePassForScan)

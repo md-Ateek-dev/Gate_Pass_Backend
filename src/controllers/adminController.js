@@ -1,11 +1,48 @@
 import GatePass from '../models/GatePass.js';
 import User from '../models/User.js';
 import ExcelJS from 'exceljs';
+import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+
+const ADMIN_LIST_FIELDS =
+  'gatePassNumber date visitorName status checkInTime outTime user createdAt';
+
+const buildPassSearchFilter = (search) => {
+  const q = search?.trim();
+  if (!q) return {};
+  return { gatePassNumber: { $regex: q, $options: 'i' } };
+};
+
+const buildUserSearchFilter = (search) => {
+  const q = search?.trim();
+  if (!q) return {};
+  return {
+    $or: [
+      { name: { $regex: q, $options: 'i' } },
+      { email: { $regex: q, $options: 'i' } },
+    ],
+  };
+};
 
 export const getAllGatePasses = async (req, res) => {
   try {
-    const passes = await GatePass.find({}).populate('user', 'name email').sort({ createdAt: -1 });
-    res.json(passes);
+    const { page, limit, skip } = parsePagination(req.query);
+    const filter = buildPassSearchFilter(req.query.search);
+
+    const [passes, total] = await Promise.all([
+      GatePass.find(filter)
+        .select(ADMIN_LIST_FIELDS)
+        .populate('user', 'name email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      GatePass.countDocuments(filter),
+    ]);
+
+    res.json({
+      passes,
+      pagination: buildPaginationMeta(total, page, limit),
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -66,22 +103,29 @@ export const deleteGatePassesBulk = async (req, res) => {
 
 export const getDashboardStats = async (req, res) => {
   try {
-    const totalVisitors = await GatePass.countDocuments();
-    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayVisitors = await GatePass.countDocuments({ date: { $gte: today } });
-    
-    const insideVisitors = await GatePass.countDocuments({ status: 'Checked In' });
-    const completedVisits = await GatePass.countDocuments({ status: 'Checked Out' });
-    const pendingRequests = await GatePass.countDocuments({ status: 'Pending' });
+
+    const [result] = await GatePass.aggregate([
+      {
+        $facet: {
+          total: [{ $count: 'count' }],
+          today: [{ $match: { date: { $gte: today } } }, { $count: 'count' }],
+          inside: [{ $match: { status: 'Checked In' } }, { $count: 'count' }],
+          completed: [{ $match: { status: 'Checked Out' } }, { $count: 'count' }],
+          pending: [{ $match: { status: 'Pending' } }, { $count: 'count' }],
+        },
+      },
+    ]);
+
+    const count = (arr) => arr[0]?.count || 0;
 
     res.json({
-      totalVisitors,
-      todayVisitors,
-      insideVisitors,
-      completedVisits,
-      pendingRequests,
+      totalVisitors: count(result.total),
+      todayVisitors: count(result.today),
+      insideVisitors: count(result.inside),
+      completedVisits: count(result.completed),
+      pendingRequests: count(result.pending),
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -90,8 +134,6 @@ export const getDashboardStats = async (req, res) => {
 
 export const exportToExcel = async (req, res) => {
   try {
-    const passes = await GatePass.find({}).populate('user', 'name email').sort({ createdAt: -1 });
-
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Gate Passes');
 
@@ -122,7 +164,13 @@ export const exportToExcel = async (req, res) => {
       { header: 'Created At', key: 'createdAt', width: 20 },
     ];
 
-    passes.forEach((pass) => {
+    const cursor = GatePass.find({})
+      .populate('user', 'name email')
+      .sort({ createdAt: -1 })
+      .lean()
+      .cursor();
+
+    for await (const pass of cursor) {
       const hasIn = Boolean(pass.checkInTime);
       const hasOut = Boolean(pass.outTime);
 
@@ -152,7 +200,7 @@ export const exportToExcel = async (req, res) => {
         requestor: pass.user ? pass.user.name : 'Unknown',
         createdAt: new Date(pass.createdAt).toLocaleString(),
       });
-    });
+    }
 
     res.setHeader(
       'Content-Type',
@@ -204,8 +252,23 @@ export const createUser = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}).select('-password').sort({ createdAt: -1 });
-    res.json(users);
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 15 });
+    const filter = buildUserSearchFilter(req.query.search);
+
+    const [users, total] = await Promise.all([
+      User.find(filter)
+        .select('-password')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(filter),
+    ]);
+
+    res.json({
+      users,
+      pagination: buildPaginationMeta(total, page, limit),
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
