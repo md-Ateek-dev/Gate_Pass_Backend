@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import GatePass from '../models/GatePass.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
-
+import { sendWhatsAppMessage } from "../services/whatsappService.js";
 const LIST_FIELDS = 'gatePassNumber date visitorName companyName status createdAt';
 
 const generateGatePassNumber = async () => {
@@ -194,18 +194,50 @@ export const updateGatePassScanStatus = async (req, res) => {
       return res.status(404).json({ message: 'Gate pass not found' });
     }
 
-    if (action === 'check-in') {
-      pass.status = 'Checked In';
-      pass.checkInTime = new Date();
-    } else if (action === 'check-out') {
-      pass.status = 'Checked Out';
-      pass.outTime = new Date();
-    } else {
-      return res.status(400).json({ message: 'Invalid scan action' });
-    }
+  if (action === "check-in") {
+  pass.status = "Checked In";
+  pass.checkInTime = new Date();
 
-    const updatedPass = await pass.save();
-    res.json(updatedPass);
+} else if (action === "check-out") {
+  pass.status = "Checked Out";
+  pass.outTime = new Date();
+
+} else {
+  return res.status(400).json({ message: "Invalid scan action" });
+}
+
+// Status update होने के बाद save करो
+const updatedPass = await pass.save();
+
+// Save होने के बाद WhatsApp भेजो
+if (action === "check-in") {
+  await sendWhatsAppMessage(
+    pass.mobileNumber,
+    `Hello ${pass.visitorName},
+
+✅ Check-In Successful
+
+Gate Pass: ${pass.gatePassNumber}
+Time: ${new Date().toLocaleString("en-IN")}
+
+Welcome to the premises.`
+  );
+
+} else {
+  await sendWhatsAppMessage(
+    pass.mobileNumber,
+    `Hello ${pass.visitorName},
+
+✅ Check-Out Successful
+
+Gate Pass: ${pass.gatePassNumber}
+Time: ${new Date().toLocaleString("en-IN")}
+
+Thank you for visiting.`
+  );
+}
+
+res.json(updatedPass);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
